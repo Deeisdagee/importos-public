@@ -1,0 +1,8 @@
+*.xlsx
+*.xlsm
+*.xls
+*.zip
+.env*
+private/
+node_modules/
+.DS_Store
