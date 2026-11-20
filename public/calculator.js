@@ -1,6 +1,21 @@
 'use strict';
 const ids=['goods','units','freight','insurance','other','dutyBase','dutyRate','taxBase','taxRate'];
 const form=document.getElementById('shipment-form');
+const reviewed=document.getElementById('basis-reviewed');
+const reviewWarning=document.getElementById('basis-warning');
+const reviewStatus=document.getElementById('basis-status');
+const reviewSensitiveIds=new Set(['goods','freight','insurance','other','dutyBase','dutyRate','taxBase','taxRate']);
+let reviewNeeded=false;
+function updateBasisReview(){
+ reviewWarning.hidden=!reviewNeeded||reviewed.checked;
+ reviewStatus.textContent=reviewed.checked
+  ?'تم تأكيد مراجعة الأسس يدويًا لهذه المدخلات؛ لم تتحقق ImportOS من صحتها رسميًا.'
+  :reviewNeeded
+   ?'النتيجة أولية: تغيّرت مدخلات قد تؤثر في أسس الرسوم والضريبة، ولم تُؤكَّد مراجعتها.'
+   :'النتيجة أولية: الأسس افتراضية أو مدخلة يدويًا، ولم تُؤكَّد مراجعتها.';
+}
+function resetBasisReview(){reviewNeeded=true;reviewed.checked=false;updateBasisReview();}
+reviewed.addEventListener('change',updateBasisReview);
 const baseline={goods:10000,units:100,freight:1000,insurance:100,other:400,dutyBase:11100,dutyRate:5,taxBase:11655,taxRate:15};
 function calculate(v){
  for(const id of ids)if(!Number.isFinite(v[id])||v[id]<0)throw new Error('أكمل جميع الحقول بأرقام صالحة غير سالبة. أدخل 0 عندما لا ينطبق المبلغ.');
@@ -12,10 +27,21 @@ function calculate(v){
 }
 const money=n=>new Intl.NumberFormat('ar-SA-u-nu-latn',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' ر.س';
 function clear(){for(const id of ['total','subtotal','duty','tax','extras'])document.getElementById(id).textContent='—';document.getElementById('perUnit').textContent='أُجري تعديل. اضغط «احسب التكلفة» لتحديث النتيجة.';}
-form.addEventListener('input',()=>{clear();document.getElementById('error').textContent='';});
+form.addEventListener('input',e=>{
+ if(e.target===reviewed)return;
+ clear();
+ document.getElementById('error').textContent='';
+ if(reviewSensitiveIds.has(e.target.id))resetBasisReview();
+});
 form.addEventListener('invalid',e=>{e.preventDefault();clear();document.getElementById('error').textContent='راجع المدخلات: أكمل كل الحقول، واستخدم أرقامًا غير سالبة، وعدد وحدات صحيحًا أكبر من صفر، ونسبًا لا تتجاوز 100٪.';},true);
 form.addEventListener('submit',e=>{e.preventDefault();clear();try{const v={};for(const id of ids){const raw=document.getElementById(id).value.trim();if(raw==='')throw new Error('أكمل جميع الحقول. أدخل 0 للمبلغ الذي لا ينطبق.');v[id]=Number(raw);}const r=calculate(v);for(const id of ['total','subtotal','duty','tax','extras'])document.getElementById(id).textContent=money(r[id]);document.getElementById('perUnit').textContent=money(r.perUnit)+' للوحدة';document.getElementById('error').textContent='';}catch(error){document.getElementById('error').textContent=error.message;}});
-function load(values){for(const id of ids)document.getElementById(id).value=values[id];form.requestSubmit();}
+function load(values){
+ for(const id of ids)document.getElementById(id).value=values[id];
+ // Example presets do not constitute official confirmation of tax/duty bases.
+ reviewNeeded=false;reviewed.checked=false;updateBasisReview();
+ form.requestSubmit();
+}
+updateBasisReview();
 document.getElementById('baseline').addEventListener('click',()=>load(baseline));
 document.getElementById('try-example').addEventListener('click',()=>load(baseline));
 document.getElementById('higher-freight').addEventListener('click',()=>load({...baseline,freight:1500,dutyBase:11600,taxBase:12180}));
