@@ -5,3 +5,13 @@ body{font-size:18px;--muted:#40595b}nav{font-size:16px}.intro{font-size:20px}.ey
 @media(max-width:760px){.intro{font-size:19px}.hero{padding-top:30px}.hero h1{font-size:34px;line-height:1.65}.fields{grid-template-columns:1fr}.form-top span{font-size:16px}.hero .button{width:100%}.hero-number b{font-size:65px}nav{gap:14px;font-size:16px}.brand{font-size:23px}.sample-total{display:block}.sample-total strong{display:block;margin-top:10px}.form-actions .button{width:100%}.scenario p{font-size:17px}.excel-detail .small{font-size:16px}.results .result-total{font-size:34px}}
 
 .result-edit{display:inline-block;color:white;margin-top:20px;font-size:18px;text-underline-offset:6px;min-height:44px}
+
+/* Contextual reminder for manually maintained official customs/tax bases. */
+.basis-warning{margin-top:22px;padding:16px 18px;border:1px solid #b6a06e;border-right:4px solid #9b7d39;border-radius:7px;background:#faf5e7;color:#39453b}
+.basis-warning[hidden],.result-basis-warning[hidden]{display:none}
+.basis-warning strong{display:block;font-size:17px}
+.basis-warning p{font-size:16px;margin:8px 0 12px;line-height:1.8}
+.basis-warning-actions{display:flex;flex-wrap:wrap;gap:10px}
+.basis-warning-actions button{background:#fff;border:1px solid #8d9379;border-radius:6px;min-height:44px;padding:8px 12px;color:var(--ink);cursor:pointer;font-size:16px}
+.basis-warning-actions button:disabled{opacity:.45;cursor:not-allowed}
+.result-basis-warning{border-right:3px solid #d9ba6d;padding:8px 12px;background:#263f43;color:#fff0cc;font-size:16px;line-height:1.8}
