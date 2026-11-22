@@ -10,12 +10,24 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { baseline, fields } = require('../public/calculator.js');
 
-function fixture({ realShell = false, href = 'https://importos.example/?lang=ar', reducedMotion = false } = {}) {
+const testFxRows = () => Object.entries({ SAR: 3.75, EUR: 0.91, GBP: 0.76, CNY: 6.7, INR: 92.8, JPY: 159.3 })
+  .map(([quote, rate]) => ({ base: 'USD', quote, rate, date: '2026-11-22' }));
+
+function fixture({
+  realShell = false, href = 'https://importos.example/?lang=ar', reducedMotion = false,
+  fxFetch, fxNow = Date.parse('2026-11-22T12:00:00Z')
+} = {}) {
   let focused = null;
+  class TextNode {
+    constructor(text) { this.nodeType = 3; this.textContent = String(text); }
+  }
   class Element {
     constructor(id) {
       this.id = id;
-      this.textContent = '';
+      this.nodeType = 1;
+      this.tagName = '';
+      this._text = '';
+      this.childNodes = [];
       this.hidden = false;
       this.disabled = false;
       this.dataset = {};
@@ -36,6 +48,20 @@ function fixture({ realShell = false, href = 'https://importos.example/?lang=ar'
         }
       };
     }
+    set textContent(value) { this._text = String(value); this.childNodes = []; }
+    get textContent() { return this.childNodes.length ? this.childNodes.map(node => node.textContent).join('') : this._text; }
+    get children() { return this.childNodes.filter(node => node.nodeType === 1); }
+    get options() { return this.children.filter(node => node.tagName === 'OPTION'); }
+    append(...items) {
+      if (this._text) { this.childNodes.push(new TextNode(this._text)); this._text = ''; }
+      for (const item of items) {
+        const node = typeof item === 'string' ? new TextNode(item) : item;
+        if (node.nodeType === 11) this.childNodes.push(...node.childNodes);
+        else this.childNodes.push(node);
+      }
+    }
+    appendChild(node) { this.append(node); return node; }
+    replaceChildren(...items) { this.childNodes = []; this._text = ''; this.append(...items); }
     set value(value) { this._value = String(value); }
     get value() { return this._value; }
     set open(value) {
@@ -100,6 +126,10 @@ function fixture({ realShell = false, href = 'https://importos.example/?lang=ar'
 
   const doc = new Element('document');
   doc.getElementById = id => nodes[id] || null;
+  doc.createElement = tag => { const element = new Element(''); element.tagName = tag.toUpperCase(); return element; };
+  doc.createElementNS = (_namespace, tag) => doc.createElement(tag);
+  doc.createTextNode = text => new TextNode(text);
+  doc.createDocumentFragment = () => { const fragment = new Element(''); fragment.nodeType = 11; return fragment; };
   doc.documentElement = { lang: 'ar', dir: 'rtl' };
   const windowModel = new Element('window');
   const location = {};
@@ -118,14 +148,17 @@ function fixture({ realShell = false, href = 'https://importos.example/?lang=ar'
   const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
   const allElements = [];
   for (const match of html.matchAll(/<([a-z][\w:-]*)\b([^>]*)>/gi)) {
-    const attributes = Object.fromEntries([...match[2].matchAll(/([\w:-]+)="([^"]*)"/g)]
-      .map(attribute => [attribute[1], attribute[2]]));
+    const attributes = Object.fromEntries([...match[2].matchAll(/([^\s=<>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g)]
+      .map(attribute => [attribute[1], attribute[2] ?? attribute[3] ?? attribute[4] ?? '']));
     const element = (attributes.id && nodes[attributes.id]) || new Element(attributes.id || 'element-' + allElements.length);
+    element.tagName = match[1].toUpperCase();
     if (attributes.id) nodes[attributes.id] = element;
     for (const [key, value] of Object.entries(attributes)) {
       element.setAttribute(key, value);
       if (key.startsWith('data-')) element.dataset[key.slice(5).replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase())] = value;
     }
+    if (attributes.value !== undefined) element.value = attributes.value;
+    if (element.tagName === 'OPTION' && nodes['currency-select']) nodes['currency-select'].appendChild(element);
     if (attributes['data-i18n']) {
       const rest = html.slice(match.index + match[0].length);
       element.textContent = rest.slice(0, rest.indexOf('</' + match[1] + '>')).replace(/<[^>]*>/g, '');
@@ -137,45 +170,41 @@ function fixture({ realShell = false, href = 'https://importos.example/?lang=ar'
     if (!match) throw new Error('Unsupported test-model selector: ' + selector);
     return allElements.filter(element => element.getAttribute(match[1]) !== null);
   };
-  let lang = 'ar';
-  const dictionaries = { ar: {}, en: {} };
-  let ui = {
-    register(translations) {
-      for (const key of ['ar', 'en']) Object.assign(dictionaries[key], translations[key]);
-    },
-    t(key, values = {}) {
-      let value = dictionaries[lang][key];
-      if (value === undefined) throw new Error('Missing controller translation: ' + lang + ':' + key);
-      return value.replace(/\{(\w+)\}/g, (_, token) => String(values[token] ?? '{' + token + '}'));
-    },
-    number: (value, decimals = 0) => new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: decimals, maximumFractionDigits: decimals
-    }).format(value),
-    money(value) { return ui.number(value, 2) + (lang === 'ar' ? ' ر.س' : ' SAR'); },
-    apply() {},
-    pulse() {}
+  let ui;
+  const requests = [];
+  const timers = new Map();
+  let nextTimer = 1;
+  const fetchModel = (url, options = {}) => {
+    requests.push({ url, options });
+    return fxFetch ? fxFetch(url, options) : Promise.resolve({ ok: true, json: async () => testFxRows() });
   };
-  windowModel.ImportOS = ui;
+  windowModel.fetch = fetchModel;
+  class ClockDate extends Date {
+    constructor(...args) { super(...(args.length ? args : [fxNow])); }
+    static now() { return fxNow; }
+  }
   const context = vm.createContext({
     document: doc, window: windowModel, queueMicrotask, location, history, URL, URLSearchParams,
     CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
-    setTimeout: () => 0, clearTimeout() {}
+    AbortController, DOMException, fetch: fetchModel, Date: ClockDate,
+    setTimeout(callback, duration) { const id = nextTimer++; timers.set(id, { callback, duration }); return id; },
+    clearTimeout(id) { timers.delete(id); }
   });
-  for (const file of realShell ? ['i18n.js', 'app.js', 'compare.js', 'calculator.js'] : ['calculator.js', 'compare.js']) {
+  const runtimeFiles = ['i18n.js', ...(realShell ? ['currency.js', 'app.js'] : []), 'compare.js', 'calculator.js'];
+  for (const file of runtimeFiles) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../public', file), 'utf8'), context, { filename: file });
   }
-  if (realShell) ui = windowModel.ImportOS;
+  ui = windowModel.ImportOS;
   return {
-    nodes, form, ui, doc, windowModel, location, history,
+    nodes, form, ui, doc, windowModel, location, history, requests, timers,
+    ready: () => new Promise(resolve => setImmediate(resolve)),
+    advanceTime(milliseconds) { fxNow += milliseconds; },
     focused: () => focused,
     input(id, value) {
       nodes[id].value = value;
       form.dispatchEvent({ type: 'input', target: nodes[id] });
     },
-    language(next) {
-      if (realShell) ui.setLanguage(next);
-      else { lang = next; doc.dispatchEvent({ type: 'importos:language' }); }
-    },
+    language(next) { ui.setLanguage(next); },
     values: () => Object.fromEntries(fields.map(id => [id, nodes[id].value]))
   };
 }
@@ -326,10 +355,10 @@ test('actual language and routing scripts retain both tools, inputs, results and
   assert.equal(new URLSearchParams(f.location.search).get('source'), 'qa');
   assert.deepEqual(f.values(), values);
   assert.equal(f.nodes.total.textContent, '14,303.25');
-  assert.match(f.nodes.perUnit.textContent, /SAR 143\.03 per unit/);
+  assert.match(f.nodes.perUnit.textContent, /(?:SAR|Saudi riyal) 143\.03 per unit/);
   assert.match(f.nodes['calc-status'].textContent, /Bases need review/);
   assert.equal(f.nodes['result-basis-warning'].hidden, false);
-  assert.equal(f.nodes['compare-total-B'].textContent, '12,700');
+  assert.equal(f.nodes['compare-total-B'].textContent, '12,700.00');
   assert.equal(f.nodes['deadline-later'].getAttribute('aria-pressed'), 'true');
   f.nodes['tab-compare'].click();
   assert.equal(f.nodes['compare-panel'].hidden, false);
@@ -429,4 +458,305 @@ test('offline file preview keeps language, tabs and shipment state usable withou
   assert.deepEqual(f.values(), values);
   assert.equal(f.nodes.total.textContent, '14,303.25');
   assert.equal(f.location.href, 'file:///tmp/importos/index.html');
+});
+
+test('all display currencies round-trip without changing canonical inputs, rates, units or reviewed status', async () => {
+  const f = fixture({ realShell: true });
+  await f.ready();
+  assert.ok(f.ui.fx.snapshot);
+  f.form.requestSubmit();
+  const initial = f.values();
+  const codes = ['USD', 'EUR', 'GBP', 'CNY', 'INR', 'JPY', 'SAR'];
+  for (let round = 0; round < 3; round++) {
+    for (const code of codes) {
+      assert.equal(f.ui.fx.requestCurrency(code), true, 'Could not select ' + code);
+      if (code === 'USD') {
+        // Equivalent input must not turn the rounded display into a new
+        // canonical value, even after repeated currency changes.
+        f.input('goods', f.nodes.goods.value + (f.nodes.goods.value.includes('.') ? '0' : '.0'));
+        f.form.requestSubmit();
+      }
+      assert.equal(f.nodes.units.value, initial.units);
+      assert.equal(f.nodes.dutyRate.value, initial.dutyRate);
+      assert.equal(f.nodes.taxRate.value, initial.taxRate);
+      assert.equal(f.nodes['basis-warning'].hidden, true);
+      assert.equal(f.nodes['result-basis-warning'].hidden, true);
+    }
+  }
+  assert.deepEqual(f.values(), initial);
+  assert.equal(f.nodes.total.textContent, '13,803.25');
+  assert.equal(f.requests.length, 1, 'Changing currency must reuse one dated snapshot');
+});
+
+test('USD entry is interpreted in USD while manual bases stay independent and all results agree', async () => {
+  const f = fixture({ realShell: true, href: 'https://importos.example/?lang=en#calculator' });
+  await f.ready();
+  assert.equal(f.ui.fx.requestCurrency('USD'), true);
+  assert.equal(f.nodes.dutyBase.value, '2960');
+  assert.equal(f.nodes.taxBase.value, '3108');
+  f.input('goods', '1000');
+  f.form.requestSubmit();
+  assert.equal(f.nodes.total.textContent, '2,014.20');
+  assert.equal(f.nodes['basis-warning'].hidden, false);
+  assert.equal(f.nodes.dutyBase.value, '2960');
+  assert.equal(f.nodes.taxBase.value, '3108');
+  assert.equal(f.nodes['compare-total-A'].textContent, '3,333.33');
+  assert.equal(f.nodes['compare-total-B'].textContent, '3,253.33');
+  assert.equal(f.ui.fx.requestCurrency('SAR'), true);
+  assert.equal(f.nodes.goods.value, '3750');
+  assert.equal(f.nodes.dutyBase.value, '11100');
+  assert.equal(f.nodes.taxBase.value, '11655');
+  assert.equal(f.nodes.total.textContent, '7,553.25');
+});
+
+test('currency and language changes preserve a pending review and a subsequent acknowledgement', async () => {
+  const f = fixture({ realShell: true });
+  await f.ready();
+  f.input('freight', 1500);
+  f.form.requestSubmit();
+  f.nodes['review-bases'].click();
+  assert.equal(f.ui.fx.requestCurrency('USD'), true);
+  f.language('en');
+  assert.equal(f.nodes.total.textContent, '3,814.20');
+  assert.equal(f.nodes['basis-warning'].hidden, false);
+  assert.equal(f.nodes['result-basis-warning'].hidden, false);
+  assert.equal(f.nodes.assumptions.open, true);
+  f.nodes['confirm-bases'].click();
+  assert.equal(f.nodes['basis-warning'].hidden, true);
+  assert.equal(f.ui.fx.requestCurrency('JPY'), true);
+  f.language('ar');
+  assert.equal(f.nodes['basis-warning'].hidden, true);
+  assert.equal(f.nodes['result-basis-warning'].hidden, true);
+  assert.equal(f.ui.fx.requestCurrency('SAR'), true);
+  assert.equal(f.nodes.freight.value, '1500');
+  assert.equal(f.nodes.total.textContent, '14,303.25');
+  f.input('dutyRate', 6);
+  assert.equal(f.nodes['basis-warning'].hidden, false);
+  assert.match(f.nodes['basis-warning-text'].textContent, /أساس ضريبة الاستيراد/);
+});
+
+test('invalid monetary inputs block a currency switch atomically and remain available for correction', async () => {
+  const f = fixture({ realShell: true });
+  await f.ready();
+  assert.equal(f.ui.fx.requestCurrency('USD'), true);
+  f.input('goods', '');
+  const values = f.values();
+  const snapshot = f.ui.fx.snapshot;
+  assert.equal(f.ui.fx.requestCurrency('EUR'), false);
+  assert.equal(f.ui.fx.currency, 'USD');
+  assert.equal(f.ui.fx.snapshot, snapshot);
+  assert.equal(f.nodes['currency-select'].value, 'USD');
+  assert.deepEqual(f.values(), values);
+  assert.notEqual(f.nodes.error.textContent, '');
+  assert.equal(f.nodes.total.textContent, '—');
+  f.input('goods', '1000');
+  assert.equal(f.ui.fx.requestCurrency('EUR'), true);
+  assert.equal(f.ui.fx.currency, 'EUR');
+});
+
+test('invalid unit/rate state survives monetary conversion and is still rejected on calculation', async () => {
+  const f = fixture({ realShell: true });
+  await f.ready();
+  f.input('units', '0');
+  f.input('taxRate', '101');
+  f.form.requestSubmit();
+  const error = f.nodes.error.textContent;
+  assert.notEqual(error, '');
+  assert.equal(f.ui.fx.requestCurrency('USD'), true);
+  assert.equal(f.nodes.units.value, '0');
+  assert.equal(f.nodes.taxRate.value, '101');
+  assert.equal(f.nodes.error.textContent, error);
+  assert.equal(f.nodes.total.textContent, '—');
+  f.form.requestSubmit();
+  assert.equal(f.nodes.total.textContent, '—');
+  assert.notEqual(f.nodes.error.textContent, '');
+});
+
+test('currency rendering updates static and dynamic amounts in both languages with the right precision', async () => {
+  const f = fixture({ realShell: true });
+  await f.ready();
+  f.input('goods', '10000.01');
+  f.form.requestSubmit();
+  assert.equal(f.ui.fx.requestCurrency('JPY'), true);
+  assert.match(f.nodes.total.textContent, /^\d{1,3}(?:,\d{3})*$/);
+  assert.match(f.nodes.goods.value, /\./, 'JPY inputs must retain conversion precision');
+  const values = f.values();
+  const amount = f.nodes.total.textContent;
+  for (const language of ['en', 'ar']) {
+    f.language(language);
+    assert.equal(f.ui.fx.currency, 'JPY');
+    assert.deepEqual(f.values(), values);
+    assert.equal(f.nodes.total.textContent, amount);
+    for (const node of f.doc.querySelectorAll('[data-currency-symbol]')) {
+      assert.equal(node.children[0].textContent, 'JP¥');
+      assert.match(node.getAttribute('title'), /JPY/);
+    }
+    for (const node of f.doc.querySelectorAll('[data-money-sar]')) {
+      const expected = f.ui.fx.number(Number(node.dataset.moneySar));
+      assert.ok(node.textContent.includes(expected));
+      assert.ok(node.textContent.includes('JP¥'));
+    }
+    assert.doesNotMatch(f.nodes.perUnit.textContent, /\{amount\}|\[object Object\]/);
+    assert.doesNotMatch(f.nodes.reason.textContent, /\{\w+\}|\[object Object\]/);
+  }
+  assert.equal(f.requests.length, 1, 'Language toggles must not request rates');
+  assert.equal(f.ui.fx.requestCurrency('SAR'), true);
+  for (const node of f.doc.querySelectorAll('[data-currency-symbol]')) {
+    assert.match(node.children[0].className, /currency-symbol--sar/);
+    assert.equal(node.children[0].getAttribute('aria-hidden'), 'true');
+    assert.notEqual(node.children[1].textContent.trim(), '');
+  }
+});
+
+test('failed or unusable initial FX responses leave SAR calculations functional and foreign choices unavailable', async () => {
+  const cases = [
+    async () => { throw new Error('Network unavailable'); },
+    async () => ({ ok: false, json: async () => testFxRows() }),
+    async () => ({ ok: true, json: async () => testFxRows().slice(1) }),
+    async () => ({ ok: true, json: async () => testFxRows().map(row => ({ ...row, date: '2026-11-01' })) }),
+    async () => ({ ok: true, json: async () => ({ unexpected: true }) })
+  ];
+  for (const fxFetch of cases) {
+    const f = fixture({ realShell: true, fxFetch });
+    await f.ready();
+    assert.equal(f.ui.fx.snapshot, null);
+    assert.equal(f.ui.fx.currency, 'SAR');
+    assert.equal(f.ui.fx.requestCurrency('USD'), false);
+    assert.equal(f.nodes['currency-select'].disabled, false);
+    assert.equal(f.nodes['currency-select'].options.find(option => option.value === 'USD').disabled, true);
+    f.form.requestSubmit();
+    assert.equal(f.nodes.total.textContent, '13,803.25');
+  }
+});
+
+test('failed refresh retains the valid snapshot, input values and results; stale data blocks new conversion', async () => {
+  let fail = false;
+  const f = fixture({ realShell: true, href: 'https://importos.example/?lang=en', fxFetch: async () => {
+    if (fail) throw new Error('Network unavailable');
+    return { ok: true, json: async () => testFxRows() };
+  } });
+  await f.ready();
+  f.form.requestSubmit();
+  assert.equal(f.ui.fx.requestCurrency('USD'), true);
+  const snapshot = f.ui.fx.snapshot;
+  const values = f.values();
+  const result = f.nodes.total.textContent;
+  fail = true;
+  assert.equal(await f.ui.fx.refresh(), false);
+  assert.equal(f.ui.fx.snapshot, snapshot);
+  assert.equal(f.ui.fx.currency, 'USD');
+  assert.deepEqual(f.values(), values);
+  assert.equal(f.nodes.total.textContent, result);
+  assert.match(f.nodes['currency-status'].textContent, /previous rate/);
+  f.advanceTime(8 * 86400000);
+  assert.equal(f.ui.fx.requestCurrency('EUR'), false);
+  assert.equal(f.ui.fx.currency, 'USD');
+  assert.deepEqual(f.values(), values);
+  assert.match(f.nodes['currency-status'].textContent, /old/);
+  assert.equal(f.ui.fx.requestCurrency('SAR'), true);
+  assert.equal(f.nodes.total.textContent, '13,803.25');
+});
+
+test('refreshing rates preserves canonical SAR values and rejects a new snapshot when calculator amounts are invalid', async () => {
+  let sarRate = 3.75;
+  const f = fixture({ realShell: true, fxFetch: async () => ({
+    ok: true, json: async () => testFxRows().map(row => row.quote === 'SAR' ? { ...row, rate: sarRate } : row)
+  }) });
+  await f.ready();
+  f.form.requestSubmit();
+  assert.equal(f.ui.fx.requestCurrency('USD'), true);
+  sarRate = 3.8;
+  assert.equal(await f.ui.fx.refresh(), true);
+  assert.equal(f.nodes.total.textContent, '3,632.43');
+  assert.equal(f.nodes['basis-warning'].hidden, true);
+  assert.equal(f.ui.fx.requestCurrency('SAR'), true);
+  assert.equal(f.nodes.goods.value, '10000');
+  assert.equal(f.nodes.total.textContent, '13,803.25');
+  assert.equal(f.ui.fx.requestCurrency('USD'), true);
+  const snapshot = f.ui.fx.snapshot;
+  f.input('dutyBase', '');
+  const values = f.values();
+  sarRate = 3.9;
+  assert.equal(await f.ui.fx.refresh(), false);
+  assert.equal(f.ui.fx.snapshot, snapshot);
+  assert.deepEqual(f.values(), values);
+});
+
+test('concurrent refresh requests coalesce, so an older response cannot race a newer snapshot', async () => {
+  let resolveResponse;
+  const f = fixture({ realShell: true, fxFetch: () => new Promise(resolve => { resolveResponse = resolve; }) });
+  await f.ready();
+  let commits = 0;
+  f.doc.addEventListener('importos:currency', () => { commits++; });
+  const first = f.ui.fx.refresh();
+  const second = f.ui.fx.refresh();
+  assert.equal(f.requests.length, 1);
+  assert.equal(f.ui.fx.requestCurrency('USD'), false);
+  resolveResponse({ ok: true, json: async () => testFxRows() });
+  assert.equal(await first, true);
+  assert.equal(await second, true);
+  assert.equal(commits, 0, 'Initial SAR rates do not trigger an input conversion');
+  assert.equal(f.requests.length, 1);
+  assert.equal(f.ui.fx.requestCurrency('USD'), true);
+  commits = 0;
+  const nextFirst = f.ui.fx.refresh();
+  const nextSecond = f.ui.fx.refresh();
+  await f.ready();
+  assert.equal(f.requests.length, 2);
+  resolveResponse({ ok: true, json: async () => testFxRows() });
+  assert.equal(await nextFirst, true);
+  assert.equal(await nextSecond, true);
+  assert.equal(commits, 1, 'A foreign-currency refresh commits one consistent snapshot');
+  assert.equal(f.requests.length, 2);
+});
+
+test('a deferred initial FX response leaves incomplete SAR input and its existing state untouched', async () => {
+  for (const submitInvalid of [false, true]) {
+    let resolveResponse;
+    const f = fixture({ realShell: true, fxFetch: () => new Promise(resolve => { resolveResponse = resolve; }) });
+    await f.ready();
+    f.input('goods', '');
+    if (submitInvalid) f.form.requestSubmit();
+    await f.ready();
+    const before = {
+      values: f.values(), total: f.nodes.total.textContent,
+      error: f.nodes.error.textContent, status: f.nodes['calc-status'].textContent,
+      pending: f.nodes['basis-warning'].hidden,
+      open: f.nodes.assumptions.open, focus: f.focused()
+    };
+    let conversions = 0;
+    f.doc.addEventListener('importos:currency', () => { conversions++; });
+    resolveResponse({ ok: true, json: async () => testFxRows() });
+    await f.ready();
+    assert.ok(f.ui.fx.snapshot);
+    assert.equal(f.ui.fx.currency, 'SAR');
+    assert.equal(f.nodes['currency-select'].options.find(option => option.value === 'USD').disabled, false);
+    assert.equal(conversions, 0);
+    assert.deepEqual({
+      values: f.values(), total: f.nodes.total.textContent,
+      error: f.nodes.error.textContent, status: f.nodes['calc-status'].textContent,
+      pending: f.nodes['basis-warning'].hidden,
+      open: f.nodes.assumptions.open, focus: f.focused()
+    }, before);
+  }
+});
+
+test('rate timeout releases controls and a subsequent request can recover', async () => {
+  let timeoutMode = true;
+  const f = fixture({ realShell: true, fxFetch: (_url, options) => {
+    if (!timeoutMode) return Promise.resolve({ ok: true, json: async () => testFxRows() });
+    return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))));
+  } });
+  await f.ready();
+  const timeout = [...f.timers.values()].find(timer => timer.duration === 10000);
+  assert.ok(timeout, 'Request has a bounded timeout');
+  timeout.callback();
+  await f.ready();
+  assert.equal(f.ui.fx.snapshot, null);
+  assert.equal(f.nodes['currency-select'].disabled, false);
+  assert.equal(f.nodes['currency-refresh'].disabled, false);
+  timeoutMode = false;
+  assert.equal(await f.ui.fx.refresh(), true);
+  assert.ok(f.ui.fx.snapshot);
+  assert.equal(f.ui.fx.requestCurrency('USD'), true);
 });

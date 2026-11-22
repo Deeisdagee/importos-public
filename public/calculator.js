@@ -92,6 +92,7 @@
       'calc.invalidValue': 'استخدم أرقامًا صالحة غير سالبة في جميع الحقول. أدخل 0 للمبلغ الذي لا ينطبق.',
       'calc.invalidUnits': 'أدخل عدد وحدات صحيحًا بين 1 و1,000,000,000.',
       'calc.invalidRate': 'يجب أن تكون نسبة الرسم ونسبة الضريبة بين 0٪ و100٪.',
+      'calc.currencyInvalid': 'أكمل المبالغ بأرقام صالحة غير سالبة قبل تغيير العملة. بقيت العملة والمبالغ كما هي.',
       'calc.tooLarge': 'الأرقام كبيرة جدًا للحساب؛ راجع المبالغ المدخلة.'
     },
     en: {
@@ -114,6 +115,7 @@
       'calc.invalidValue': 'Use valid, non-negative numbers in every field. Enter 0 for a cost that does not apply.',
       'calc.invalidUnits': 'Enter a whole unit count from 1 to 1,000,000,000.',
       'calc.invalidRate': 'Both the duty rate and the tax rate must be between 0% and 100%.',
+      'calc.currencyInvalid': 'Complete the amounts with valid, non-negative numbers before changing currency. Your currency and amounts have stayed unchanged.',
       'calc.tooLarge': 'These amounts are too large to calculate. Review the entered values.'
     }
   });
@@ -128,6 +130,11 @@
   const status = document.getElementById('calc-status');
   const resultPanel = document.getElementById('estimate');
   const outputIds = ['total', 'subtotal', 'duty', 'tax', 'extras'];
+  const monetaryFields = ['goods', 'freight', 'insurance', 'other', 'dutyBase', 'taxBase'];
+  // Currency changes only render these SAR values; they never reparse rounded
+  // display amounts. User edits are converted to SAR once, at the active rate.
+  const moneyValues = Object.fromEntries(monetaryFields.map(id => [id, Number(inputs[id].value)]));
+  const displayedInputs = Object.fromEntries(monetaryFields.map(id => [id, inputs[id].value.trim()]));
   let currentResult = null;
   let phase = 'waiting';
   let errorKey = '';
@@ -135,10 +142,44 @@
   let focusQueued = false;
 
   const captureSources = () => Object.fromEntries(
-    Object.keys(basisDependencies).map(id => [id, inputs[id].value.trim()])
+    Object.keys(basisDependencies).map(id => [id,
+      monetaryFields.includes(id) && Number.isFinite(moneyValues[id])
+        ? moneyValues[id] : inputs[id].value.trim()
+    ])
   );
   let reviewedSources = captureSources();
   const pendingBases = () => pendingBasisReview(captureSources(), reviewedSources);
+
+  function syncMonetaryInput(id) {
+    const raw = inputs[id].value.trim();
+    const displayed = displayedInputs[id];
+    const value = Number(raw);
+    const unchanged = raw !== '' && displayed !== '' && Number.isFinite(value)
+      && value === Number(displayed);
+    if (!unchanged) {
+      if (raw === '' || !Number.isFinite(value) || value < 0) moneyValues[id] = NaN;
+      else {
+        try { moneyValues[id] = UI.fx ? UI.fx.toSAR(value) : value; }
+        catch (_) { moneyValues[id] = NaN; }
+      }
+    }
+    displayedInputs[id] = raw;
+  }
+
+  function renderMonetaryInputs() {
+    for (const id of monetaryFields) {
+      if (!Number.isFinite(moneyValues[id])) continue;
+      inputs[id].value = UI.fx ? UI.fx.inputValue(moneyValues[id]) : String(moneyValues[id]);
+      displayedInputs[id] = inputs[id].value.trim();
+    }
+  }
+
+  const money = value => UI.fx ? UI.fx.money(value) : UI.money(value);
+  function renderMessage(node, key, parameters = {}) {
+    if (!node) return;
+    if (UI.fx) UI.fx.renderMessage(node, key, parameters);
+    else node.textContent = UI.t(key, parameters);
+  }
 
   function focusInvalid(field) {
     const target = (field && inputs[field]) || form.querySelector('input:invalid');
@@ -150,11 +191,16 @@
   function render() {
     const pending = pendingBases();
     for (const id of outputIds) {
-      document.getElementById(id).textContent = currentResult ? UI.number(currentResult[id], 2) : '—';
+      document.getElementById(id).textContent = currentResult
+        ? UI.fx ? UI.fx.number(currentResult[id]) : UI.number(currentResult[id], 2)
+        : '—';
     }
-    document.getElementById('perUnit').textContent = currentResult
-      ? UI.t('calc.perUnit', { amount: UI.money(currentResult.perUnit) })
-      : UI.t(phase === 'waiting' ? 'calc.waiting' : 'calc.edited');
+    renderMessage(document.getElementById('perUnit'), currentResult
+      ? 'calc.perUnit' : phase === 'waiting' ? 'calc.waiting' : 'calc.edited',
+    currentResult ? { amount: money(currentResult.perUnit) } : {});
+    renderMessage(document.getElementById('calculator-preset-description'), 'result.presetText', {
+      amount: money(1500)
+    });
 
     warning.hidden = pending.size === 0;
     if (pending.size > 0) {
@@ -192,7 +238,11 @@
   }
 
   function loadPreset(values) {
-    for (const id of fields) inputs[id].value = values[id];
+    for (const id of fields) {
+      if (monetaryFields.includes(id)) moneyValues[id] = values[id];
+      else inputs[id].value = values[id];
+    }
+    renderMonetaryInputs();
     reviewedSources = captureSources();
     errorKey = '';
     errorField = null;
@@ -213,6 +263,7 @@
   });
   form.addEventListener('input', event => {
     if (!fields.includes(event.target.id)) return;
+    if (monetaryFields.includes(event.target.id)) syncMonetaryInput(event.target.id);
     clearResult();
     errorKey = '';
     errorField = null;
@@ -243,7 +294,13 @@
       for (const id of fields) {
         const raw = inputs[id].value.trim();
         if (raw === '') throw invalid('calc.required', id);
-        values[id] = Number(raw);
+        if (monetaryFields.includes(id)) {
+          const value = Number(raw);
+          if (!Number.isFinite(value) || value < 0) throw invalid('calc.invalidValue', id);
+          syncMonetaryInput(id);
+          if (!Number.isFinite(moneyValues[id])) throw invalid('calc.tooLarge', id);
+          values[id] = moneyValues[id];
+        } else values[id] = Number(raw);
       }
       currentResult = calculateShipment(values);
       render();
@@ -262,6 +319,49 @@
   }));
   const tryExample = document.getElementById('try-example');
   if (tryExample) tryExample.addEventListener('click', () => loadPreset(baseline));
+  if (UI.fx) {
+    UI.fx.registerGuard(({ currency, snapshot }) => {
+      for (const id of monetaryFields) {
+        const raw = inputs[id].value.trim();
+        if (raw === '' || !Number.isFinite(Number(raw)) || Number(raw) < 0 || !inputs[id].validity.valid) {
+          errorKey = 'calc.currencyInvalid';
+          errorField = id;
+          render();
+          focusInvalid(id);
+          return false;
+        }
+        syncMonetaryInput(id);
+        try {
+          if (!Number.isFinite(moneyValues[id]) || !Number.isFinite(UI.fx.fromSAR(moneyValues[id], currency, snapshot))) {
+            throw invalid('calc.tooLarge', id);
+          }
+        } catch (_) {
+          errorKey = 'calc.tooLarge';
+          errorField = id;
+          render();
+          focusInvalid(id);
+          return false;
+        }
+      }
+      if (currentResult) {
+        try {
+          if (Object.values(currentResult).some(value => !Number.isFinite(UI.fx.fromSAR(value, currency, snapshot)))) {
+            throw invalid('calc.tooLarge');
+          }
+        } catch (_) {
+          errorKey = 'calc.tooLarge';
+          errorField = null;
+          render();
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+  document.addEventListener('importos:currency', () => {
+    renderMonetaryInputs();
+    render();
+  });
   document.addEventListener('importos:language', render);
   UI.apply(document);
   render();

@@ -57,7 +57,7 @@
     'compare.openCalculator': 'Open shipment calculator',
     'compare.details': 'Where do the numbers come from?',
     'compare.tableLabel': 'Supplier quote breakdown',
-    'compare.caption': 'Illustrative purchase of 1,000 identical units. All amounts in Saudi riyals.',
+    'compare.caption': 'Illustrative purchase of 1,000 identical units. All amounts use the selected currency.',
     'compare.item': 'Item',
     'compare.unitPrice': 'Unit price',
     'compare.goodsValue': 'Goods × 1,000',
@@ -98,7 +98,7 @@
     'result.other': 'Other costs',
     'result.note': 'Includes the import tax you entered, even if it may later be recoverable. This is not a profit margin or customs declaration.',
     'result.whatIf': 'EXPLORE A FREIGHT CHANGE',
-    'result.presetText': 'Another example with SAR 1,500 freight and separately updated bases.',
+    'result.presetText': 'Another example with {amount} freight and separately updated bases.',
     'result.loadPreset': 'Load higher-freight scenario',
     'method.title': 'How is the result calculated?',
     'method.dutyTitle': 'Duty and tax',
@@ -106,7 +106,7 @@
     'method.totalTitle': 'Total',
     'method.total': 'Goods + freight + insurance + duty + tax + other costs.',
     'method.unitTitle': 'Cost per unit',
-    'method.unit': 'Total ÷ number of units. Display is rounded to two decimals only.',
+    'method.unit': 'Total ÷ number of units. Results use the selected currency’s precision; calculation is not rounded.',
     'method.limits': 'The calculator does not determine classifications, exemptions or official charges, or allocate mixed shipments across different products.',
     'guide.kicker': 'BEFORE YOU COMMIT',
     'guide.title': 'Three things complete the picture.',
@@ -119,7 +119,7 @@
     'guide.missing': 'Clearance, inspection, storage, delivery and certificates can change the result. Check them before buying.',
     'guide.saber': 'Saber services',
     'privacy.title': 'Your inputs and the limits of this demo',
-    'privacy.text': 'Inputs are used only in this page’s memory. There are no accounts, analytics, cookies or local storage. Reloading restores the examples. The hosting provider may process standard connection logs.',
+    'privacy.text': 'Your inputs stay in page memory and are not sent to the rate provider. This page requests public currency rates from Frankfurter without your shipment amounts. There are no accounts, analytics or local storage. Reloading restores the examples. Connection providers may process standard technical logs.',
     'privacy.scope': 'The comparison is an educational example and does not verify supplier quality or reliability. Both tools support planning and do not determine official charges.',
     'privacy.offer': 'The separate Excel workbook and comparison service are currently unavailable for purchase or download on this page.',
     'footer.message': 'A clearer decision. Before you order.',
@@ -140,6 +140,7 @@
     });
   }
   messages.ar['common.unit'] = 'وحدة';
+  messages.ar['result.presetText'] = 'مثال آخر بشحن {amount}، وأسس محدّثة مسبقًا.';
   messages.ar['workspace.manual'] = 'مدخلاتك · أسس تؤكّدها بنفسك';
   const formatters = new Map();
   const ui = {

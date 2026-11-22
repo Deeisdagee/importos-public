@@ -84,6 +84,14 @@ if (typeof module !== 'undefined' && module.exports) {
     const element = byId(id);
     if (element && element.textContent !== value) element.textContent = value;
   };
+  const number = (value, decimals = 0) => ui.fx ? ui.fx.number(value) : ui.number(value, decimals);
+  const money = value => ui.fx ? ui.fx.money(value) : ui.money(value);
+  const writeMessage = (id, key, parameters = {}) => {
+    const element = byId(id);
+    if (!element) return;
+    if (ui.fx) ui.fx.renderMessage(element, key, parameters);
+    else write(id, ui.t(key, parameters));
+  };
   const pressed = (id, value) => {
     const element = byId(id);
     if (element) element.setAttribute('aria-pressed', String(value));
@@ -96,14 +104,14 @@ if (typeof module !== 'undefined' && module.exports) {
     pressed('deadline-later', state.deadline === 35);
     pressed('compare-freight', state.extraFreight);
 
-    write('compare-total-A', ui.number(result.totalA));
-    write('compare-total-B', ui.number(result.totalB));
-    write('hero-total-A', ui.number(result.totalA));
-    write('hero-total-B', ui.number(result.totalB));
-    write('heroDelta', ui.number(result.difference));
+    write('compare-total-A', number(result.totalA));
+    write('compare-total-B', number(result.totalB));
+    write('hero-total-A', number(result.totalA));
+    write('hero-total-B', number(result.totalB));
+    write('heroDelta', number(result.difference));
     write('hero-delta-label', ui.t('cmp.heroDelta'));
-    write('unitA', ui.t('cmp.unit', { amount: ui.money(result.unitA) }));
-    write('unitB', ui.t('cmp.unit', { amount: ui.money(result.unitB) }));
+    writeMessage('unitA', 'cmp.unit', { amount: money(result.unitA) });
+    writeMessage('unitB', 'cmp.unit', { amount: money(result.unitB) });
 
     ['A', 'B'].forEach(supplier => {
       const card = byId('card' + supplier);
@@ -121,26 +129,26 @@ if (typeof module !== 'undefined' && module.exports) {
       if (bar) bar.style.transform = 'scaleX(' + result['total' + supplier] / 12700 + ')';
     });
 
-    write('compare-freight-label', ui.t(state.extraFreight ? 'cmp.freight.added' : 'cmp.freight.add', {
-      amount: ui.money(500)
-    }));
-    write('compare-freight-help', ui.t(state.extraFreight ? 'cmp.freight.helpAdded' : 'cmp.freight.help', {
-      amount: ui.money(result.freightB)
-    }));
+    writeMessage('compare-freight-label', state.extraFreight ? 'cmp.freight.added' : 'cmp.freight.add', {
+      amount: money(500)
+    });
+    writeMessage('compare-freight-help', state.extraFreight ? 'cmp.freight.helpAdded' : 'cmp.freight.help', {
+      amount: money(result.freightB)
+    });
 
     const message = state.extraFreight ? 'extra' : state.deadline === 35 ? 'later' : 'soon';
     write('verdict', ui.t('cmp.verdict.' + message));
-    write('reason', ui.t('cmp.reason.' + message, {
-      difference: ui.money(result.difference),
-      totalA: ui.money(result.totalA),
-      totalB: ui.money(result.totalB)
-    }));
-    write('compare-difference', ui.t('cmp.difference.' + result.cheaper, {
-      amount: ui.money(result.differencePerUnit)
-    }));
-    write('bFreight', ui.number(result.freightB, 2));
-    write('bSum', ui.number(result.totalB, 2));
-    write('bEach', ui.number(result.unitB, 2));
+    writeMessage('reason', 'cmp.reason.' + message, {
+      difference: money(result.difference),
+      totalA: money(result.totalA),
+      totalB: money(result.totalB)
+    });
+    writeMessage('compare-difference', 'cmp.difference.' + result.cheaper, {
+      amount: money(result.differencePerUnit)
+    });
+    write('bFreight', number(result.freightB, 2));
+    write('bSum', number(result.totalB, 2));
+    write('bEach', number(result.unitB, 2));
 
     if (animate && typeof ui.pulse === 'function') {
       const outcome = byId('outcome');
@@ -163,6 +171,11 @@ if (typeof module !== 'undefined' && module.exports) {
     renderComparison({ animate: true });
   });
   document.addEventListener('importos:language', () => renderComparison());
+  document.addEventListener('importos:currency', () => renderComparison());
+  if (ui.fx) ui.fx.registerGuard(({ currency, snapshot }) => {
+    try { return Number.isFinite(ui.fx.fromSAR(12700, currency, snapshot)); }
+    catch (_) { return false; }
+  });
   ui.compareScenario = compareScenario;
   renderComparison();
 })();
