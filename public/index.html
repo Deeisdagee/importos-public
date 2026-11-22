@@ -1,39 +1,164 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-
-<meta name="description" content="حساب تكلفة الاستيراد من الصين إلى السعودية: مثال بالريال السعودي وحاسبة لتقدير تكلفة الشحنة للوحدة باستخدام الرسوم والأسس التي تؤكدها بنفسك.">
-<title>ImportOS — احسب تكلفة الاستيراد قبل طلب الشحنة</title>
-<link rel="stylesheet" href="style.css"><script src="calculator.js" defer></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14233f">
+  <meta name="description" content="ImportOS — قارن عروض الموردين واحسب تكلفة وصول شحنتك في مساحة واحدة، بالعربية والإنجليزية.">
+  <title>ImportOS — قبل قرار الشراء</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="i18n.js" defer></script>
+  <script src="currency.js" defer></script>
+  <script src="app.js" defer></script>
+  <script src="compare.js" defer></script>
+  <script src="calculator.js" defer></script>
 </head>
 <body>
-<header class="wrap"><a class="brand" href="#" aria-label="ImportOS الرئيسية" dir="ltr"><span class="brand-icon">↗</span> ImportOS</a><nav aria-label="التنقل"><a href="#example">المثال</a><a href="#calculator">الحاسبة</a><a href="/compare.html">مقارنة الموردين · EN</a><a href="#excel">نسخة إكسل</a></nav><span class="header-note">قرار أوضح. قبل الطلب.</span></header>
+<svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="icon-compare" viewBox="0 0 24 24"><path d="M4 5h6v14H4zM14 9h6v10h-6zM3 21h18M15 4l2-2 2 2M17 2v4"/></symbol>
+  <symbol id="icon-calc" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M8 6h8M8 10h1M12 10h1M16 10h.1M8 14h1M12 14h1M16 14h.1M8 18h1M12 18h1M16 18h.1"/></symbol>
+  <symbol id="icon-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 7h14M5 17h14"/></symbol>
+  <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="icon-shield" viewBox="0 0 24 24"><path d="m12 2 8 3v6c0 5-4 8-8 11-4-3-8-6-8-11V5zM8 11l3 3 5-5"/></symbol>
+  <symbol id="icon-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
+  <symbol id="icon-box" viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10M7.5 4.5l9 5v5"/></symbol>
+  <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></symbol>
+  <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M6.2 6a8 8 0 0 1 13 3M17.8 18a8 8 0 0 1-13-3"/></symbol>
+</svg>
+<a class="skip-link" href="#workspace" data-i18n="nav.skip">انتقل إلى الأدوات</a>
+<header class="site-header">
+  <div class="shell header-inner">
+    <a class="brand" href="#compare" data-go="compare" aria-label="ImportOS الرئيسية" data-i18n-aria="nav.home" dir="ltr">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 28 28"><path d="M6 8h7v12H6zM16 4h6v16h-6zM5 23h18"/></svg></span>
+      <span>Import<span class="brand-os">OS</span></span>
+    </a>
+    <nav class="main-nav" aria-label="التنقل الرئيسي" data-i18n-aria="nav.label">
+      <a href="#compare" data-go="compare" data-nav="compare" class="is-active" data-i18n="nav.compare">مقارنة الموردين</a>
+      <a href="#calculator" data-go="calculator" data-nav="calculator" data-i18n="nav.calculator">حاسبة الشحنة</a>
+      <a href="#guide" data-i18n="nav.guide">كيف تستخدمها؟</a>
+    </nav>
+    <button class="language-button" id="language-toggle" type="button" aria-label="Switch to English">
+      <svg class="icon" aria-hidden="true"><use href="#icon-globe"/></svg><span id="language-label" lang="en">EN</span>
+    </button>
+  </div>
+</header>
 <main>
-<section class="hero wrap">
- <div class="hero-copy"><p class="eyebrow"><span></span> خطّط لشحنتك قبل الطلب</p><h1>كم ستكلّفك الشحنة<br><em>للوحدة الواحدة؟</em></h1><p class="intro">لا تكتفِ بسعر المورد. شاهد أثر الشحن والرسوم على تكلفة وصول البضاعة.</p><a id="try-example" class="button" href="#estimate">جرّب المثال الآن <span aria-hidden="true">←</span></a><p class="micro">الأرقام جاهزة. اضغط وشاهد النتيجة.</p><p class="micro">مجانية • دون تسجيل</p></div>
- <div class="hero-visual"><div class="sample-top"><span>مثال توضيحي</span><span class="pill">100 وحدة</span></div><p class="sample-label">التكلفة التقديرية للوحدة</p><div class="hero-number"><b dir="ltr">138.03</b><span>ر.س</span></div><div class="cost-bar" aria-label="توزيع تكلفة المثال: بضاعة وشحن وتأمين، رسوم وضريبة، مصاريف أخرى"><span></span><span></span><span></span></div><div class="legend"><span><i></i> بضاعة + شحن + تأمين</span><span><i></i> رسوم + ضريبة</span><span><i></i> مصاريف أخرى</span></div><div class="sample-total"><span>إجمالي التدفق النقدي المطلوب</span><strong dir="ltr">13,803.25 ر.س</strong></div><p class="sample-foot">قيم ونسب افتراضية للتوضيح؛ ليست تسعيرة جمركية.</p></div>
-</section>
-<section class="question-strip"><div class="wrap"><p>عرض المورد أرخص… <strong>هل تكلفة وصوله أقل؟</strong></p><span>ابدأ بأرقام قابلة للمقارنة.</span></div></section>
-<section id="calculator" class="calculator-section"><div class="wrap section"><div class="section-heading"><div><p class="eyebrow">جرّب، ثم عدّل</p><h2>حاسبة تكلفة الشحنة للوحدة</h2></div><p>ابدأ بالمثال الجاهز. ولشحنة تخصك، عدّل أرقامك وراجع أسس الرسوم والضريبة.</p></div>
-<div class="planner"><form id="shipment-form"><div class="form-top"><h3>مدخلات الشحنة</h3><span>جميع المبالغ بالريال السعودي</span></div><div class="fields">
-<label for="goods">قيمة البضاعة<input id="goods" type="number" min="0" step="any" value="10000" required></label>
-<label for="units">عدد الوحدات<input id="units" type="number" min="1" max="1000000000" step="1" value="100" required></label>
-<label for="freight">الشحن<input id="freight" type="number" min="0" step="any" value="1000" required></label>
-<label for="insurance">التأمين<input id="insurance" type="number" min="0" step="any" value="100" required></label>
-<label for="other">مصاريف أخرى مؤكدة<input id="other" type="number" min="0" step="any" value="400" required><small>مثل التخليص والنقل المحلي إن انطبقا؛ أدخل 0 عند عدم وجودها.</small></label>
-</div><p class="assumption-note">المثال يستخدم رسمًا افتراضيًا 5٪ وضريبة 15٪. هذه ليست نسبًا عامة لكل الشحنات.</p><details class="assumptions"><summary>راجع أسس الرسوم والضريبة لشحنتك</summary><p>هذه القيم يدوية. أكّدها من الجهة الرسمية أو المخلّص، وحدّثها عند تغيّر أرقام الشحنة.</p><div class="fields"><label for="dutyBase">أساس الرسم الجمركي<input id="dutyBase" type="number" min="0" step="any" value="11100" required><small>قيمة مستقلة تُدخلها وتحدّثها بنفسك.</small></label>
-<label for="dutyRate">نسبة الرسم الجمركي ٪<input id="dutyRate" type="number" min="0" max="100" step="any" value="5" required></label>
-<label for="taxBase">أساس ضريبة الاستيراد<input id="taxBase" type="number" min="0" step="any" value="11655" required><small>ليست محسوبة تلقائيًا من قيمة البضاعة.</small></label>
-<label for="taxRate">نسبة ضريبة الاستيراد ٪<input id="taxRate" type="number" min="0" max="100" step="any" value="15" required></label>
-</div></details><div class="form-actions"><button class="button" type="submit">احسب التكلفة</button><button class="text-button" type="button" id="baseline">استعادة المثال</button></div><p id="error" role="alert"></p></form>
-<aside id="estimate" class="results" aria-live="polite" aria-atomic="true"><p class="eyebrow">تقدير التدفق النقدي للشحنة</p><p id="total" class="result-total" dir="ltr">—</p><p id="perUnit" class="unit-result">اضغط «احسب التكلفة» لعرض النتيجة.</p><dl><div><dt>بضاعة + شحن + تأمين</dt><dd id="subtotal">—</dd></div><div><dt>الرسم حسب المدخلات</dt><dd id="duty">—</dd></div><div><dt>الضريبة حسب المدخلات</dt><dd id="tax">—</dd></div><div><dt>المصاريف الأخرى</dt><dd id="extras">—</dd></div></dl><p class="result-note">يشمل التقدير ضريبة الاستيراد المدخلة حتى إن أمكن استردادها لاحقًا. ليس هامش ربح ولا بيانًا جمركيًا.</p><a class="result-edit" href="#calculator">عدّل الأرقام لشحنتك ←</a><noscript>تحتاج الحاسبة إلى JavaScript. يمكنك قراءة المثال المحسوب أعلاه دون تشغيله.</noscript></aside></div>
-<div class="scenario"><div><h3>ماذا لو ارتفع الشحن إلى 1,500 ر.س؟</h3><p>في المثال فقط: نحدّث أساس الرسم إلى 11,600 وأساس الضريبة إلى 12,180 ر.س. يصبح الإجمالي 14,407 ر.س، أي 144.07 ر.س للوحدة.</p></div><button id="higher-freight" class="outline-button" type="button">حمّل سيناريو الشحن الأعلى ←</button></div>
-</div></section>
-<section id="example" class="wrap section example"><div><p class="eyebrow">01 / مثال عملي</p><h2>حساب تكلفة الاستيراد<br>من الصين إلى السعودية</h2><p>تاجر افتراضي يخطط لشراء 100 وحدة متطابقة. جميع المبالغ بالريال السعودي. هذه قصة حسابية للتعلّم، وليست معاملة حقيقية أو تحديدًا للرسوم الواجبة.</p><div class="notice"><strong>الأسس والنسب هنا افتراضات فقط.</strong><p>نفترض في المثال رسمًا بنسبة 5٪ على أساس 11,100 ر.س، وضريبة بنسبة 15٪ على أساس 11,655 ر.س. لا تنطبق هذه الافتراضات على كل منتج أو شحنة. أدخل الأسس والنسب التي تؤكدها من الجهة الرسمية أو مخلّصك.</p></div></div>
-<div class="example-ledger"><div class="ledger-heading"><h3>من سعر البضاعة إلى تكلفة الوصول</h3><span>ر.س</span></div><dl><div><dt>البضاعة</dt><dd>10,000.00</dd></div><div><dt>الشحن</dt><dd>1,000.00</dd></div><div><dt>التأمين</dt><dd>100.00</dd></div><div><dt>الرسم الافتراضي: 5٪ × 11,100</dt><dd>555.00</dd></div><div><dt>الضريبة الافتراضية: 15٪ × 11,655</dt><dd>1,748.25</dd></div><div><dt>مصاريف أخرى مدخلة</dt><dd>400.00</dd></div><div class="ledger-final"><dt>الإجمالي / 100 وحدة</dt><dd>13,803.25</dd></div></dl><p>النتيجة المعروضة: <strong>138.03 ر.س للوحدة.</strong> القيمة غير المقرّبة: <span dir="ltr">138.0325</span> ر.س.</p></div></section>
-<section class="wrap section"><p class="eyebrow">03 / قبل الالتزام بالطلب</p><h2>ثلاثة أسئلة تجعل المقارنة أوضح.</h2><div class="guide-grid"><article><span>01</span><h3>ما الذي يشمله عرض المورد؟</h3><p>تحقق من العملة والكمية وشروط التسليم مثل FOB أو DDP. لا تضف الشحن مرة أخرى إذا كان محسوبًا ضمن السعر.</p></article><article><span>02</span><h3>ما الذي تأكدت منه رسميًا؟</h3><p>راجع التصنيف والأسس والنسب والمتطلبات المناسبة لمنتجك. <a href="https://zatca.gov.sa/ar/eServices/Pages/CustomsDutyandTaxCalculator.aspx" target="_blank" rel="noopener noreferrer">حاسبة زاتكا الرسمية ↗</a> و<a href="https://saber.sa/home/services" target="_blank" rel="noopener noreferrer">خدمات سابر ↗</a> نقاط بداية مفيدة.</p></article><article><span>03</span><h3>ما المصاريف التي لم تدخلها؟</h3><p>تحقق من التخليص والفحص والتخزين والنقل المحلي وأي شهادات أو رسوم تنطبق. الحاسبة لا تضيف مصاريف لم تدخلها بنفسك.</p></article></div></section>
-<section id="excel" class="wrap excel-section"><div><p class="eyebrow">لمن يكرر تخطيط الشحنات</p><h2>نفس المنهج.<br>في ملف إكسل قابل لإعادة الاستخدام.</h2><p>نسخة منفصلة تتضمن مثالين وعمودًا فارغًا لشحنة جديدة، مع فحوص للمدخلات. اختُبرت عيّنات منها على Excel لأجهزة Mac. الأسس والنسب يدوية، والأعمدة تمثل شحنات مستقلة.</p></div><div class="excel-detail"><p class="availability">المبيعات غير متاحة حاليًا</p><h3>هل يناسب هذا أسلوب عملك؟</h3><p>ما أصعب جزء في حساب تكلفة الشحنة؟ وما الذي تحتاج أن تحتفظ به للمقارنة في طلبك القادم؟</p><p class="small">هذه الصفحة لا تتضمن شراءً أو تنزيلًا للملف. لم تُختبر إصدارات Excel الأخرى أو تطبيقات الجداول الأخرى.</p></div></section>
-<section class="wrap method"><details><summary>كيف تُحسب النتائج؟</summary><p>الرسم = الأساس المدخل × النسبة ÷ 100. الضريبة = أساسها المدخل × نسبتها ÷ 100. الإجمالي = البضاعة + الشحن + التأمين + الرسم + الضريبة + المصاريف الأخرى. تكلفة الوحدة = الإجمالي ÷ عدد الوحدات. تُجرى العمليات دون تقريب، وتُعرض النتائج بمنزلتين عشريتين.</p><p>لا تحدد الأداة التصنيف أو الإعفاءات أو الضريبة الانتقائية أو الرسوم الرسمية، ولا توزّع تكاليف شحنة مختلطة على منتجات مختلفة.</p></details><details><summary>خصوصية الأرقام التي تدخلها</summary><p>تُستخدم المدخلات في ذاكرة هذه الصفحة فقط. لا توجد تحليلات أو نماذج إرسال أو حسابات أو ملفات تعريف ارتباط أو تخزين محلي. إعادة تحميل الصفحة تعيد المثال الافتراضي. قد يعالج مزود الاستضافة سجلات اتصال قياسية. الروابط الرسمية الخارجية لا تُفتح إلا عند اختيارك لها.</p></details></section>
-</main><footer class="wrap"><a class="brand" dir="ltr" href="#">ImportOS</a><p>أداة للتخطيط. النتيجة تتبع مدخلاتك.</p><span>تخطيط الشحنات بالريال السعودي</span></footer>
-</body></html>
+  <section class="hero shell" aria-labelledby="hero-title">
+    <div class="hero-surface">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span><span data-i18n="hero.eyebrow">من عرض سعر… إلى قرار أوضح</span></p>
+        <h1 id="hero-title"><span data-i18n="hero.title1">السعر وحده</span><br><span data-i18n="hero.title2">لا يحكي </span><em data-i18n="hero.title3">كل القصة.</em></h1>
+        <p class="hero-description" data-i18n="hero.description">قارن الموردين، ثم احسب تكلفة وصول شحنتك. أرقام واضحة في مساحة واحدة.</p>
+        <div class="hero-actions">
+          <a href="#compare" class="button button-lime" data-go="compare"><svg class="icon" aria-hidden="true"><use href="#icon-compare"/></svg><span data-i18n="hero.compare">جرّب المقارنة</span></a>
+          <a href="#calculator" class="button button-ghost" data-go="calculator"><svg class="icon" aria-hidden="true"><use href="#icon-calc"/></svg><span data-i18n="hero.calculate">احسب تكلفة شحنتك</span></a>
+        </div>
+        <p class="hero-note"><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg><span data-i18n="hero.note">مجانية · دون تسجيل · أرقامك تبقى في الصفحة</span></p>
+      </div>
+      <div class="hero-visual" aria-label="مثال مقارنة الموردين" data-i18n-aria="hero.visualLabel">
+        <div class="visual-head"><span class="visual-label" data-i18n="hero.example">مثال توضيحي</span><span class="visual-unit" data-i18n="hero.quantity">1,000 قطعة</span></div>
+        <div class="quote-stack">
+          <div class="mini-quote"><span class="supplier-avatar avatar-a" data-i18n="compare.aLetter">أ</span><div><span class="mini-label" data-i18n="compare.supplierA">المورد أ</span><strong class="money-inline" dir="ltr"><span data-currency-symbol></span><bdi id="hero-total-A">12,500</bdi></strong></div><span class="mini-days"><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg><span data-i18n="compare.days15">15 يومًا</span></span></div>
+          <div class="mini-quote"><span class="supplier-avatar avatar-b" data-i18n="compare.bLetter">ب</span><div><span class="mini-label" data-i18n="compare.supplierB">المورد ب</span><strong class="money-inline" dir="ltr"><span data-currency-symbol></span><bdi id="hero-total-B">12,200</bdi></strong></div><span class="mini-days"><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg><span data-i18n="compare.days30">30 يومًا</span></span></div>
+        </div>
+        <div class="route-illustration" aria-hidden="true">
+          <span class="route-node"><svg class="icon"><use href="#icon-box"/></svg></span>
+          <svg class="route-path" viewBox="0 0 240 34" preserveAspectRatio="none"><path class="route-base" d="M1 17h238"/><path class="route-dash" d="M1 17h238"/><circle class="route-point" cx="120" cy="17" r="5"/></svg>
+          <span class="route-node route-node-destination"><svg class="icon"><use href="#icon-check"/></svg></span>
+        </div>
+        <div class="hero-delta"><div><span id="hero-delta-label" data-i18n="hero.delta">فرق التكاليف المذكورة</span><p data-i18n="hero.deltaHint">الموعد والبنود الناقصة يكملان الصورة.</p></div><strong class="money-inline" dir="ltr"><span data-currency-symbol></span><bdi id="heroDelta">300</bdi></strong></div>
+      </div>
+    </div>
+    <div class="hero-strip"><span><svg class="icon" aria-hidden="true"><use href="#icon-compare"/></svg><span data-i18n="strip.compare">عرضان، مقارنة أوضح</span></span><span><svg class="icon" aria-hidden="true"><use href="#icon-calc"/></svg><span data-i18n="strip.calculate">التكلفة الإجمالية وللوحدة</span></span><span><svg class="icon" aria-hidden="true"><use href="#icon-globe"/></svg><span data-i18n="strip.language">نفس التجربة بالعربية والإنجليزية</span></span></div>
+  </section>
+
+  <section class="workspace shell" id="workspace" aria-labelledby="workspace-title">
+    <div class="section-heading"><div><p class="section-kicker" data-i18n="workspace.kicker">مساحة قرارك</p><h2 id="workspace-title" data-i18n="workspace.title">جرّب الأرقام. شاهد الفرق.</h2></div><p data-i18n="workspace.description">انتقل بين المقارنة والحساب؛ تظل مدخلاتك كما هي.</p></div>
+    <section id="currency-panel" class="currency-panel" aria-labelledby="currency-title">
+      <div class="currency-intro"><span class="currency-intro-icon" aria-hidden="true"><svg class="icon"><use href="#icon-globe"/></svg></span><div><h3 id="currency-title" data-i18n="fx.title">عملتك، حسابك.</h3><p data-i18n="fx.intro">اختر العملة؛ نحوّل المبالغ مباشرة في المقارنة والحاسبة.</p></div></div>
+      <div class="currency-control"><label for="currency-select" data-i18n="fx.select">عملة العرض والإدخال</label><div class="currency-select-row"><span id="currency-selected-symbol" class="currency-selected-symbol"></span><select id="currency-select" aria-describedby="currency-status currency-note"><option value="SAR">SAR · الريال السعودي</option><option value="USD">USD · الدولار الأمريكي</option><option value="EUR">EUR · اليورو</option><option value="GBP">GBP · الجنيه الإسترليني</option><option value="CNY">CNY · اليوان الصيني</option><option value="INR">INR · الروبية الهندية</option><option value="JPY">JPY · الين الياباني</option></select><button id="currency-refresh" type="button" class="currency-refresh" aria-label="تحديث أسعار الصرف" data-i18n-aria="fx.refresh" title="تحديث أسعار الصرف" data-i18n-title="fx.refresh"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg></button></div></div>
+      <div class="currency-meta"><p id="currency-rate" class="currency-rate" dir="ltr"></p><p id="currency-status" class="currency-status" role="status" aria-live="polite">جارٍ جلب أسعار الصرف…</p><p id="currency-note" data-i18n="fx.note">سعر مرجعي للتقدير؛ قد يختلف سعر البنك وتضاف رسوم تحويل.</p></div>
+      <details class="currency-details"><summary data-i18n="fx.details">كيف يعمل التحويل؟</summary><p data-i18n="fx.detailsText">تبديل العملة يحوّل جميع المبالغ مع الحفاظ على قيمتها الأساسية بالريال. تحديث الأسعار يعيد عرض هذه القيمة بالعملة المختارة. الكميات والنسب لا تتغيّر. التحويل لا يحدد الأسس أو النسب الرسمية للرسوم والضريبة.</p><p data-i18n="fx.precision">قد تظهر منازل إضافية في حقول الإدخال لحفظ قيمة التحويل؛ تُعرض النتائج بدقة العملة.</p><a href="https://frankfurter.dev/" target="_blank" rel="noopener noreferrer" data-i18n="fx.source">مصدر الأسعار: Frankfurter</a></details>
+    </section>
+    <div class="workspace-toolbar">
+      <div class="tool-tabs" role="tablist" aria-label="أدوات التخطيط" data-i18n-aria="workspace.tabs">
+        <button type="button" class="tool-tab is-active" id="tab-compare" role="tab" aria-selected="true" aria-controls="compare-panel" data-tab="compare"><svg class="icon" aria-hidden="true"><use href="#icon-compare"/></svg><span data-i18n="nav.compare">مقارنة الموردين</span></button>
+        <button type="button" class="tool-tab" id="tab-calculator" role="tab" aria-selected="false" aria-controls="calculator-panel" tabindex="-1" data-tab="calculator"><svg class="icon" aria-hidden="true"><use href="#icon-calc"/></svg><span data-i18n="nav.calculator">حاسبة الشحنة</span></button>
+      </div>
+      <span class="workspace-badge"><span class="badge-mark" aria-hidden="true"></span><span id="workspace-badge" data-i18n="workspace.demo">مثال تعليمي بأرقام افتراضية</span></span>
+    </div>
+
+    <div class="tool-panel" id="compare-panel" role="tabpanel" aria-labelledby="tab-compare" tabindex="0">
+      <div class="comparison-layout">
+        <aside class="controls-card">
+          <div class="card-heading"><span class="card-icon"><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg></span><div><p class="overline" data-i18n="compare.conditions">ظروف الطلب</p><h3 data-i18n="compare.deadline">متى تحتاج البضاعة؟</h3></div></div>
+          <div class="deadline-options" role="group" aria-label="موعد الوصول" data-i18n-aria="compare.deadlineLabel">
+            <button id="deadline-soon" type="button" aria-pressed="true"><strong data-i18n="compare.days20Number">20</strong><span data-i18n="compare.withinDays">يومًا</span></button>
+            <button id="deadline-later" type="button" aria-pressed="false"><strong data-i18n="compare.days35Number">35</strong><span data-i18n="compare.withinDays">يومًا</span></button>
+          </div>
+          <p class="help-text" data-i18n="compare.deadlineHelp">غيّر المهلة لترى أي عرض يناسب الموعد.</p>
+          <div class="freight-scenario"><span class="overline" data-i18n="compare.whatIf">جرّب احتمالًا آخر</span><h3 data-i18n="compare.freightTitle">ماذا لو ارتفع الشحن؟</h3><button id="compare-freight" class="scenario-toggle" type="button" aria-pressed="false"><span class="toggle-check" aria-hidden="true"><svg class="icon"><use href="#icon-check"/></svg></span><span id="compare-freight-label">جرّب زيادة شحن المورد ب</span></button><p class="help-text" id="compare-freight-help">ضغطة لإضافة المبلغ، وضغطة لإزالته.</p></div>
+          <p class="example-caption"><svg class="icon" aria-hidden="true"><use href="#icon-info"/></svg><span data-i18n="compare.exampleNote">مقارنة 1,000 قطعة بالمواصفات نفسها. ليست عروضًا تجارية حقيقية.</span></p>
+        </aside>
+
+        <div class="comparison-results">
+          <div class="supplier-grid">
+            <article id="cardA" class="supplier-card is-selected"><div class="supplier-heading"><span class="supplier-avatar avatar-a" data-i18n="compare.aLetter">أ</span><h3 data-i18n="compare.supplierA">المورد أ</h3><span class="selected-check" aria-hidden="true"><svg class="icon"><use href="#icon-check"/></svg></span></div><div class="supplier-body"><p class="amount-label" data-i18n="compare.statedCost">التكاليف المذكورة</p><div class="supplier-amount money-amount" dir="ltr"><span data-currency-symbol></span><bdi id="compare-total-A">12,500</bdi></div><p id="unitA" class="unit-line">تكلفة القطعة</p><div class="cost-track" aria-hidden="true"><span id="barA"></span></div><div class="arrival"><span><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg><span data-i18n="compare.arrival">وصول مفترض خلال</span></span><strong data-i18n="compare.days15">15 يومًا</strong></div></div><div id="statusA" class="supplier-status">ضمن المهلة المختارة</div></article>
+            <article id="cardB" class="supplier-card"><div class="supplier-heading"><span class="supplier-avatar avatar-b" data-i18n="compare.bLetter">ب</span><h3 data-i18n="compare.supplierB">المورد ب</h3><span class="selected-check" aria-hidden="true"><svg class="icon"><use href="#icon-check"/></svg></span></div><div class="supplier-body"><p class="amount-label" data-i18n="compare.statedCost">التكاليف المذكورة</p><div class="supplier-amount money-amount" dir="ltr"><span data-currency-symbol></span><bdi id="compare-total-B">12,200</bdi></div><p id="unitB" class="unit-line">تكلفة القطعة</p><div class="cost-track" aria-hidden="true"><span id="barB"></span></div><div class="arrival"><span><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg><span data-i18n="compare.arrival">وصول مفترض خلال</span></span><strong data-i18n="compare.days30">30 يومًا</strong></div></div><div id="statusB" class="supplier-status is-late">يتجاوز مهلة 20 يومًا</div></article>
+          </div>
+          <section id="outcome" class="outcome-card" aria-live="polite" aria-atomic="true"><div class="outcome-icon" aria-hidden="true"><svg class="icon"><use href="#icon-compare"/></svg></div><div><p class="overline" data-i18n="compare.insight">قراءة المقارنة</p><h3 id="verdict">المورد أ يناسب موعدك في المثال</h3><p id="reason">ب أقل تكلفة مذكورة، لكنه يصل بعد 30 يومًا.</p><p class="outcome-note" data-i18n="compare.resultNote">قراءة أولية للتكاليف والمواعيد المفترضة. أكّد البنود الناقصة وبيانات المورد قبل القرار.</p></div></section>
+        </div>
+      </div>
+
+      <div class="scope-notice"><svg class="icon" aria-hidden="true"><use href="#icon-info"/></svg><div><strong data-i18n="compare.exclusionsTitle">ما لم يُذكر… لا نعتبره صفرًا.</strong><p data-i18n="compare.exclusions">هذه المقارنة تستبعد الضريبة والجمارك والتأمين وأي رسوم غير مذكورة. حاسبة الشحنة تساعدك على إدخال هذه البنود بنفسك.</p></div><button type="button" class="button button-outline" data-go="calculator" data-i18n="compare.openCalculator">افتح حاسبة الشحنة</button></div>
+      <details class="details-card"><summary><span data-i18n="compare.details">من أين جاءت الأرقام؟</span><svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><div class="details-content"><div class="table-scroll" tabindex="0" role="region" aria-label="تفاصيل عروض الموردين" data-i18n-aria="compare.tableLabel"><table class="comparison-table"><caption data-i18n="compare.caption">مثال تعليمي لشراء 1,000 قطعة متطابقة؛ جميع المبالغ بالعملة المختارة.</caption><thead><tr><th scope="col" data-i18n="compare.item">البند</th><th scope="col" data-i18n="compare.supplierA">المورد أ</th><th scope="col" data-i18n="compare.supplierB">المورد ب</th></tr></thead><tbody><tr><th scope="row" data-i18n="compare.unitPrice">سعر القطعة</th><td><span data-money-sar="10.00">10.00</span></td><td><span data-money-sar="11.00">11.00</span></td></tr><tr><th scope="row" data-i18n="compare.goodsValue">البضاعة × 1,000</th><td><span data-money-sar="10000.00">10,000.00</span></td><td><span data-money-sar="11000.00">11,000.00</span></td></tr><tr><th scope="row" data-i18n="form.freight">الشحن</th><td><span data-money-sar="2000.00">2,000.00</span></td><td><span class="money-inline" dir="ltr"><span data-currency-symbol></span><bdi id="bFreight">1,000.00</bdi></span></td></tr><tr><th scope="row" data-i18n="compare.otherFees">رسوم أخرى مذكورة</th><td><span data-money-sar="500.00">500.00</span></td><td><span data-money-sar="200.00">200.00</span></td></tr><tr class="table-total"><th scope="row" data-i18n="compare.statedTotal">مجموع التكاليف المذكورة</th><td><span data-money-sar="12500.00">12,500.00</span></td><td><span class="money-inline" dir="ltr"><span data-currency-symbol></span><bdi id="bSum">12,200.00</bdi></span></td></tr><tr><th scope="row" data-i18n="compare.perPiece">التكلفة المذكورة للقطعة</th><td><span data-money-sar="12.50">12.50</span></td><td><span class="money-inline" dir="ltr"><span data-currency-symbol></span><bdi id="bEach">12.20</bdi></span></td></tr></tbody></table></div><p class="help-text" data-i18n="compare.formula">المجموع المذكور = البضاعة + الشحن + الرسوم المذكورة فقط.</p></div></details>
+    </div>
+
+    <div class="tool-panel" id="calculator-panel" role="tabpanel" aria-labelledby="tab-calculator" tabindex="0" hidden>
+      <div class="calculator-intro"><div><h3 data-i18n="form.title">تكلفة وصول الشحنة، بوضوح.</h3><p data-i18n="form.description">ابدأ بالمثال، ثم أدخل المبالغ والأسس التي تأكدت منها لشحنتك.</p></div><span class="soft-badge" data-i18n="form.manual">أسس الرسوم والضريبة يدوية</span></div>
+      <div class="calculator-layout">
+        <form id="shipment-form" class="form-card">
+          <div class="form-heading"><h3 data-i18n="form.shipment">مدخلات الشحنة</h3><span id="currency-input-note">المبالغ بالعملة المختارة</span></div>
+          <fieldset class="fields"><legend class="sr-only" data-i18n="form.shipment">مدخلات الشحنة</legend>
+            <label for="goods"><span class="field-caption"><span data-i18n="form.goods">قيمة البضاعة</span><span class="input-currency" data-currency-symbol></span></span><input id="goods" type="number" min="0" step="any" value="10000" required inputmode="decimal"></label>
+            <label for="units"><span data-i18n="form.units">عدد الوحدات</span><input id="units" type="number" min="1" max="1000000000" step="1" value="100" required inputmode="numeric"></label>
+            <label for="freight"><span class="field-caption"><span data-i18n="form.freight">الشحن</span><span class="input-currency" data-currency-symbol></span></span><input id="freight" type="number" min="0" step="any" value="1000" required inputmode="decimal"></label>
+            <label for="insurance"><span class="field-caption"><span data-i18n="form.insurance">التأمين</span><span class="input-currency" data-currency-symbol></span></span><input id="insurance" type="number" min="0" step="any" value="100" required inputmode="decimal"></label>
+            <label for="other" class="field-wide"><span class="field-caption"><span data-i18n="form.other">مصاريف أخرى مؤكدة</span><span class="input-currency" data-currency-symbol></span></span><input id="other" type="number" min="0" step="any" value="400" required inputmode="decimal" aria-describedby="other-help"><small id="other-help" data-i18n="form.otherHelp">مثل التخليص والنقل المحلي إن انطبقا. أدخل 0 عند عدم وجودها.</small></label>
+          </fieldset>
+          <p class="assumption-note"><svg class="icon" aria-hidden="true"><use href="#icon-info"/></svg><span data-i18n="form.assumption">نسبتا 5٪ للرسم و15٪ للضريبة افتراضات للمثال، وليستا نسبًا عامة لكل الشحنات.</span></p>
+          <details class="assumptions details-card"><summary><span><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg><span data-i18n="form.basesTitle">راجع أسس الرسوم والضريبة</span></span><svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><div class="details-content"><p class="help-text" data-i18n="form.basesHelp">قيم مستقلة تُدخلها وتحدّثها بنفسك بعد تأكيدها من الجهة الرسمية أو المخلّص.</p><div class="fields">
+            <label for="dutyBase"><span class="field-caption"><span data-i18n="form.dutyBase">أساس الرسم الجمركي</span><span class="input-currency" data-currency-symbol></span></span><input id="dutyBase" type="number" min="0" step="any" value="11100" required inputmode="decimal"></label>
+            <label for="dutyRate"><span data-i18n="form.dutyRate">نسبة الرسم الجمركي ٪</span><input id="dutyRate" type="number" min="0" max="100" step="any" value="5" required inputmode="decimal"></label>
+            <label for="taxBase"><span class="field-caption"><span data-i18n="form.taxBase">أساس ضريبة الاستيراد</span><span class="input-currency" data-currency-symbol></span></span><input id="taxBase" type="number" min="0" step="any" value="11655" required inputmode="decimal"></label>
+            <label for="taxRate"><span data-i18n="form.taxRate">نسبة ضريبة الاستيراد ٪</span><input id="taxRate" type="number" min="0" max="100" step="any" value="15" required inputmode="decimal"></label>
+          </div></div></details>
+          <div id="basis-warning" class="basis-warning" role="status" aria-live="polite" hidden><div class="warning-heading"><svg class="icon" aria-hidden="true"><use href="#icon-info"/></svg><strong data-i18n="form.warningTitle">تغيّرت المدخلات. راجع الأسس.</strong></div><p id="basis-warning-text"></p><div class="basis-warning-actions"><button id="review-bases" type="button" class="button button-warning" data-i18n="form.review">افتح الأسس للمراجعة</button><button id="confirm-bases" type="button" class="button button-warning-quiet" data-i18n="form.confirm">أؤكد أنني راجعت الأسس</button></div></div>
+          <p id="error" class="form-error" role="alert"></p>
+          <div class="form-actions"><button type="submit" class="button button-blue"><svg class="icon" aria-hidden="true"><use href="#icon-calc"/></svg><span data-i18n="form.calculate">احسب التكلفة</span></button><button id="baseline" type="button" class="text-button"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg><span data-i18n="form.reset">استعادة المثال</span></button></div>
+        </form>
+        <aside id="estimate" class="estimate-card" aria-label="نتيجة حساب الشحنة" data-i18n-aria="result.label">
+          <div class="estimate-heading"><p class="overline" data-i18n="result.title">التدفق النقدي التقديري</p><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg></div>
+          <div class="result-values" aria-live="polite" aria-atomic="true"><div class="estimate-total money-amount" dir="ltr"><span data-currency-symbol></span><bdi id="total">—</bdi></div><p id="perUnit" class="estimate-per-unit">احسب التكلفة لعرض نتيجة الوحدة.</p><p id="result-basis-warning" class="result-basis-warning" hidden></p><span id="calc-status" class="calc-status" data-i18n="result.waiting">جاهز للحساب</span></div>
+          <dl class="result-breakdown"><div><dt data-i18n="result.goods">بضاعة + شحن + تأمين</dt><dd class="money-amount" dir="ltr"><span data-currency-symbol></span><bdi id="subtotal">—</bdi></dd></div><div><dt data-i18n="result.duty">الرسم حسب المدخلات</dt><dd class="money-amount" dir="ltr"><span data-currency-symbol></span><bdi id="duty">—</bdi></dd></div><div><dt data-i18n="result.tax">الضريبة حسب المدخلات</dt><dd class="money-amount" dir="ltr"><span data-currency-symbol></span><bdi id="tax">—</bdi></dd></div><div><dt data-i18n="result.other">المصاريف الأخرى</dt><dd class="money-amount" dir="ltr"><span data-currency-symbol></span><bdi id="extras">—</bdi></dd></div></dl>
+          <p class="result-note" data-i18n="result.note">يشمل المبلغ ضريبة الاستيراد المدخلة حتى إن أمكن استردادها لاحقًا. ليس هامش ربح أو بيانًا جمركيًا.</p>
+          <div class="calc-preset"><span class="overline" data-i18n="result.whatIf">شاهد أثر تغيّر الشحن</span><p id="calculator-preset-description">مثال آخر بشحن أعلى وأسس محدّثة مسبقًا.</p><button id="higher-freight" type="button" class="button button-ghost"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg><span data-i18n="result.loadPreset">حمّل سيناريو الشحن الأعلى</span></button></div>
+        </aside>
+      </div>
+      <details class="details-card calc-method"><summary><span data-i18n="method.title">كيف نحسب النتيجة؟</span><svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><div class="details-content"><div class="formula-grid"><div><strong data-i18n="method.dutyTitle">الرسم والضريبة</strong><p data-i18n="method.duty">كل أساس مدخل × نسبته ÷ 100.</p></div><div><strong data-i18n="method.totalTitle">الإجمالي</strong><p data-i18n="method.total">البضاعة + الشحن + التأمين + الرسم + الضريبة + المصاريف الأخرى.</p></div><div><strong data-i18n="method.unitTitle">تكلفة الوحدة</strong><p data-i18n="method.unit">الإجمالي ÷ عدد الوحدات. تُعرض النتائج بدقة العملة المختارة؛ دون تقريب أثناء الحساب.</p></div></div><p class="help-text" data-i18n="method.limits">الحاسبة لا تحدد التصنيف أو الإعفاءات أو الرسوم الرسمية، ولا توزّع تكلفة شحنة مختلطة على منتجات مختلفة.</p></div></details>
+    </div>
+  </section>
+
+  <section id="guide" class="guide shell" aria-labelledby="guide-title"><div class="section-heading"><div><p class="section-kicker" data-i18n="guide.kicker">قبل الالتزام بالطلب</p><h2 id="guide-title" data-i18n="guide.title">ثلاثة أشياء تكمل الصورة.</h2></div></div><div class="guide-grid">
+    <article><span class="guide-icon"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg></span><h3 data-i18n="guide.specTitle">قارن الشيء نفسه</h3><p data-i18n="guide.spec">ثبّت المواصفات والكمية والعملة وشروط التسليم. لا تضف الشحن مرتين إذا كان ضمن السعر.</p></article>
+    <article><span class="guide-icon"><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg></span><h3 data-i18n="guide.basesTitle">أكّد الأسس والنسب</h3><p data-i18n="guide.bases">راجع ما ينطبق على منتجك مع الجهة الرسمية أو المخلّص؛ أرقام المثال ليست تسعيرة جمركية.</p><a href="https://zatca.gov.sa/ar/eServices/Pages/CustomsDutyandTaxCalculator.aspx" target="_blank" rel="noopener noreferrer" data-i18n="guide.zatca">حاسبة زاتكا الرسمية</a></article>
+    <article><span class="guide-icon"><svg class="icon" aria-hidden="true"><use href="#icon-info"/></svg></span><h3 data-i18n="guide.missingTitle">اسأل عمّا لم يُذكر</h3><p data-i18n="guide.missing">التخليص والفحص والتخزين والنقل والشهادات قد تغيّر النتيجة. تحقّق منها قبل قرار الشراء.</p><a href="https://saber.sa/home/services" target="_blank" rel="noopener noreferrer" data-i18n="guide.saber">خدمات سابر</a></article>
+  </div></section>
+  <section class="shell footnotes"><details class="details-card"><summary><span data-i18n="privacy.title">خصوصية الأرقام وحدود التجربة</span><svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><div class="details-content"><p data-i18n="privacy.text">مدخلاتك تعمل داخل ذاكرة الصفحة ولا تُرسل إلى مزود الأسعار. تطلب الصفحة أسعار العملات العامة من Frankfurter دون مبالغ شحنتك. لا حسابات ولا تحليلات ولا تخزين محلي. إعادة التحميل تعيد الأمثلة. قد يعالج مزودو الاتصال سجلات تقنية قياسية.</p><p data-i18n="privacy.scope">المقارنة مثال تعليمي؛ لا تتضمن تحققًا من جودة المورد أو موثوقيته. الأداتان تساعدان على التخطيط ولا تحددان التكاليف الرسمية.</p><p data-i18n="privacy.offer">نسخة إكسل وخدمة المقارنة المنفصلة غير متاحتين للشراء أو التنزيل من هذه الصفحة حاليًا.</p></div></details></section>
+  <noscript><p class="noscript shell">تحتاج الأدوات التفاعلية إلى JavaScript. JavaScript is required for the interactive tools.</p></noscript>
+</main>
+<footer class="site-footer shell"><a class="brand" href="#compare" data-go="compare" dir="ltr"><span>Import<span class="brand-os">OS</span></span></a><p data-i18n="footer.message">قرار أوضح. قبل الطلب.</p><span data-i18n="footer.note">أداة للتخطيط · النتيجة تتبع مدخلاتك</span></footer>
+</body>
+</html>

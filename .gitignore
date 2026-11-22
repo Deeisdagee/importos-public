@@ -6,3 +6,11 @@
 private/
 node_modules/
 .DS_Store
+
+.openai/
+
+dist/
+
+review-artifacts/
+
+public/__qa__*.html
